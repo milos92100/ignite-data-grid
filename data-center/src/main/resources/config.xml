@@ -1,0 +1,16 @@
+<bean class="org.apache.ignite.configuration.IgniteConfiguration">
+
+    <property name="cacheConfiguration">
+        <list>
+            <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                <property name="cacheStoreFactory">
+                    <bean class="javax.cache.configuration.FactoryBuilder" factory-method="factoryOf">
+                        <constructor-arg value="org.example.ignitedatagrid.datacenter.adapter.UserCacheStoreAdapter"/>
+                    </bean>
+                </property>
+                <property name="readThrough" value="true"/>
+                <property name="writeThrough"  value="true"/>
+            </bean>
+        </list>
+    </property>
+</bean>
