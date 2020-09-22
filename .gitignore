@@ -24,4 +24,7 @@ hs_err_pid*
 .idea
 
 data-center/ignite
+client/ignite
 data-center/logs
+
+target
