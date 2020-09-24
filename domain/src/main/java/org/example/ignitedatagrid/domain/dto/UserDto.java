@@ -1,21 +1,16 @@
-package org.example.ignitedatagrid.domain;
+package org.example.ignitedatagrid.domain.dto;
 
-import java.util.Set;
+import java.util.Objects;
 
-public class User {
-
+public class UserDto {
     private Long id;
     private String firstName;
     private String lastName;
-    private Set<Address> addresses;
-    private Long companyId;
 
-    public User(Long id, String firstName, String lastName, Set<Address> addresses, Long companyId) {
+    public UserDto(Long id, String firstName, String lastName) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
-        this.addresses = addresses;
-        this.companyId = companyId;
     }
 
     public Long getId() {
@@ -42,30 +37,27 @@ public class User {
         this.lastName = lastName;
     }
 
-    public Set<Address> getAddresses() {
-        return addresses;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        UserDto userDto = (UserDto) o;
+        return Objects.equals(id, userDto.id) &&
+                Objects.equals(firstName, userDto.firstName) &&
+                Objects.equals(lastName, userDto.lastName);
     }
 
-    public void setAddresses(Set<Address> addresses) {
-        this.addresses = addresses;
-    }
-
-    public Long getCompanyId() {
-        return companyId;
-    }
-
-    public void setCompanyId(Long companyId) {
-        this.companyId = companyId;
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, firstName, lastName);
     }
 
     @Override
     public String toString() {
-        return "User{" +
+        return "UserDto{" +
                 "id=" + id +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
-                ", addresses=" + addresses +
-                ", companyId=" + companyId +
                 '}';
     }
 }

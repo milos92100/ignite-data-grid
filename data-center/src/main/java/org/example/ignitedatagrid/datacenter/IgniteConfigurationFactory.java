@@ -6,11 +6,11 @@ import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.multicast.TcpDiscoveryMulticastIpFinder;
-import org.example.ignitedatagrid.datacenter.cache.config.CompanyCacheConfig;
 import org.example.ignitedatagrid.datacenter.cache.config.UserCacheConfig;
 
 import javax.cache.expiry.Duration;
 import javax.cache.expiry.TouchedExpiryPolicy;
+import javax.sql.DataSource;
 import java.util.Collections;
 
 public class IgniteConfigurationFactory {
@@ -28,10 +28,9 @@ public class IgniteConfigurationFactory {
         return config;
     }
 
-    private static IgniteConfiguration common() {
-
+    public static IgniteConfiguration forServer(String name, DataSource dataSource) {
         IgniteConfiguration cfg = new IgniteConfiguration();
-
+        cfg.setIgniteInstanceName(name);
         cfg.setPeerClassLoadingEnabled(true);
 
         TcpDiscoveryMulticastIpFinder ipFinder = new TcpDiscoveryMulticastIpFinder();
@@ -39,23 +38,9 @@ public class IgniteConfigurationFactory {
         cfg.setDiscoverySpi(new TcpDiscoverySpi().setIpFinder(ipFinder));
 
         cfg.setCacheConfiguration( //
-                applyCommonConfiguration(UserCacheConfig.INSTANCE), //
-                applyCommonConfiguration(CompanyCacheConfig.INSTANCE) //
+                applyCommonConfiguration(UserCacheConfig.create(dataSource))
         );
 
-
-        return cfg;
-    }
-
-    public static IgniteConfiguration forClient() {
-        var cfg = common();
-        cfg.setClientMode(true);
-        return cfg;
-    }
-
-    public static IgniteConfiguration forServer(String name) {
-        var cfg = common();
-        cfg.setIgniteInstanceName(name);
         return cfg;
     }
 }

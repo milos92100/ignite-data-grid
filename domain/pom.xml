@@ -12,5 +12,4 @@
     <artifactId>domain</artifactId>
     <packaging>jar</packaging>
     <name>domain</name>
-
 </project>

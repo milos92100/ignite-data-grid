@@ -7,13 +7,10 @@ import org.apache.ignite.cache.query.ScanQuery;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.multicast.TcpDiscoveryMulticastIpFinder;
-import org.example.ignitedatagrid.domain.Address;
-import org.example.ignitedatagrid.domain.User;
+import org.example.ignitedatagrid.domain.entities.User;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.Collections;
-import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
 
 public class ClientB {
@@ -45,10 +42,10 @@ public class ClientB {
 //        IgnitePredicate<Set<Address>> predicate = (addresses) -> addresses.stream().anyMatch(a -> a.getStreet().equals("Sunset blv. no5"));
 //        var p = new MyPredicate();
 
-        var getByStreet = new ScanQuery<Long, User>((k, u) -> u.getAddresses().stream()
-                .anyMatch(address -> address.getStreet().equals("Sunset blv. no3"))
-        );
-        executeQuery("getByStreet", getByStreet, cache);
+//        var getByStreet = new ScanQuery<Long, User>((k, u) -> u.getAddresses().stream()
+//                .anyMatch(address -> address.getStreet().equals("Sunset blv. no3"))
+//        );
+//        executeQuery("getByStreet", getByStreet, cache);
 
         System.out.println("Press any key to continue...");
         System.in.read();

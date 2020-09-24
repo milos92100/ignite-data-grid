@@ -1,59 +1,68 @@
 package org.example.ignitedatagrid.datacenter.adapter;
 
 
-import org.apache.ignite.cache.store.CacheStoreAdapter;
-import org.apache.ignite.lang.IgniteBiInClosure;
-import org.example.ignitedatagrid.domain.User;
-import org.jetbrains.annotations.Nullable;
+import org.example.ignitedatagrid.domain.entities.User;
 
 import javax.cache.Cache;
-import javax.cache.integration.CacheLoaderException;
 import javax.cache.integration.CacheWriterException;
+import javax.sql.DataSource;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Collection;
-import java.util.Map;
 
-public class UserCacheStoreAdapter extends CacheStoreAdapter<Long, User> {
+public class UserCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long, User> {
 
+    private static final String TABLE_NAME = "Users";
+    private static final String INSERT_QUERY = "INSERT INTO Users (id, first_name, last_name) VALUES (?, ?, ?)";
 
-    @Override
-    public void loadCache(IgniteBiInClosure<Long, User> clo, @Nullable Object... args) throws CacheLoaderException {
-        System.out.println("UserCacheStoreAdapter.loadCache");
+    public UserCacheStoreAdapter(DataSource dataSource) {
+        super(dataSource);
     }
 
-    @Override
-    public void sessionEnd(boolean commit) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.sessionEnd");
-    }
+    private void writeInternal(Long id, User user) {
+        try (var connection = dataSource.getConnection();
+             var statement = connection.prepareStatement(INSERT_QUERY)) {
 
-    @Override
-    public User load(Long aLong) throws CacheLoaderException {
-        System.out.println("UserCacheStoreAdapter.load");
-        return null;
-    }
+            statement.setLong(1, id);
+            statement.setString(2, user.getFirstName());
+            statement.setString(3, user.getLastName());
 
-    @Override
-    public Map<Long, User> loadAll(Iterable<? extends Long> iterable) throws CacheLoaderException {
-        System.out.println("UserCacheStoreAdapter.loadAll");
-        return null;
+            var affectedRows = statement.executeUpdate();
+            if (affectedRows == 0) {
+                throw new SQLException("Inserting user failed, no rows affected.");
+            }
+        } catch (SQLException e) {
+            LOGGER.error(e.getSQLState(), e);
+            throw new CacheWriterException(e);
+        }
     }
 
     @Override
     public void write(Cache.Entry<? extends Long, ? extends User> entry) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.write");
+        writeInternal(entry.getKey(), entry.getValue());
     }
 
     @Override
     public void writeAll(Collection<Cache.Entry<? extends Long, ? extends User>> collection) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.writeAll");
+        collection.forEach(entry -> writeInternal(entry.getKey(), entry.getValue()));
     }
 
     @Override
-    public void delete(Object o) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.delete");
+    protected Long getKey(User entity) {
+        return entity.getId();
     }
 
     @Override
-    public void deleteAll(Collection<?> collection) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.deleteAll");
+    protected User readEntity(ResultSet resultSet) throws SQLException {
+        return new User(
+                resultSet.getLong("id"),
+                resultSet.getString("firstName"),
+                resultSet.getString("lastName")
+        );
+    }
+
+    @Override
+    protected String getTableName() {
+        return TABLE_NAME;
     }
 }
