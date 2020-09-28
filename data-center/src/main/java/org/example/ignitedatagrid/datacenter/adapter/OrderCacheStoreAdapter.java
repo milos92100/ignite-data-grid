@@ -1,111 +1,102 @@
 package org.example.ignitedatagrid.datacenter.adapter;
 
 
-import org.apache.ignite.IgniteLogger;
-import org.apache.ignite.cache.store.CacheStoreAdapter;
-import org.apache.ignite.lang.IgniteBiInClosure;
-import org.apache.ignite.resources.LoggerResource;
 import org.example.ignitedatagrid.domain.entities.Order;
-import org.jetbrains.annotations.Nullable;
 
-import javax.cache.Cache;
-import javax.cache.integration.CacheLoaderException;
-import javax.cache.integration.CacheWriterException;
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.Map;
 
-public class OrderCacheStoreAdapter extends CacheStoreAdapter<Long, Order> {
-    private static final String GET_ALL_USERS_QUERY = "SELECT * FROM [dbo].[Orders]";
-    private static final String GET_USER_BY_ID = "SELECT * FROM [dbo].[Orders] where [id] = ?";
-
-    @LoggerResource
-    private IgniteLogger LOGGER;
-
-    private final DataSource dataSource;
+public class OrderCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long, Order> {
 
     public OrderCacheStoreAdapter(DataSource dataSource) {
-        this.dataSource = dataSource;
+        super(dataSource);
     }
 
-    private Order toOrder(ResultSet cursor) throws SQLException {
+    @Override
+    protected PreparedStatement insertStatement(Connection connection, Order entity) throws SQLException {
+        var statement = connection.prepareStatement(
+                "INSERT INTO [dbo].[Orders] ([id], [volume], [price], [account_id], [instrument_id]) VALUES (?, ?, ?, ?, ?)"
+        );
+        statement.setLong(1, entity.getId());
+        statement.setInt(2, entity.getVolume());
+        statement.setDouble(3, entity.getPrice());
+        statement.setLong(4, entity.getAccountId());
+        statement.setLong(5, entity.getInstrumentId());
+        return statement;
+    }
+
+
+    @Override
+    protected PreparedStatement updateStatement(Connection connection, Order entity) throws SQLException {
+        var statement = connection.prepareStatement(
+                "UPDATE [dbo].[Orders] SET [volume] = ?, [price] = ?, [account_id] = ?, [instrument_id] = ? WHERE [id] = ?"
+        );
+        statement.setInt(1, entity.getVolume());
+        statement.setDouble(2, entity.getPrice());
+        statement.setLong(3, entity.getAccountId());
+        statement.setLong(4, entity.getInstrumentId());
+        statement.setLong(5, entity.getId());
+        return statement;
+    }
+
+
+    @Override
+    protected PreparedStatement getAllStatement(Connection connection) throws SQLException {
+        return connection.prepareStatement("SELECT * FROM [dbo].[Orders]");
+    }
+
+
+    @Override
+    protected PreparedStatement getByKeyStatement(Connection connection, Long key) throws SQLException {
+        var statement = connection.prepareStatement("SELECT * FROM [dbo].[Orders] WHERE [id] = ?");
+        statement.setLong(1, key);
+        return statement;
+    }
+
+
+    @Override
+    protected PreparedStatement getAllByKeysStatement(Connection connection, Iterable<Long> keys) throws SQLException {
+        var statement = connection.prepareStatement("SELECT * FROM [dbo].[Orders] WHERE [id] IN (?)");
+        statement.setString(1, joinKeys(keys));
+        return statement;
+    }
+
+    @Override
+    protected PreparedStatement deleteStatement(Connection connection, Long key) throws SQLException {
+        var statement = connection.prepareStatement("DELETE FROM [dbo].[Orders] WHERE [id] = ?");
+        statement.setLong(1, key);
+        return statement;
+    }
+
+    @Override
+    protected PreparedStatement deleteAllStatement(Connection connection, Collection<Long> keys) throws SQLException {
+        var statement = connection.prepareStatement("DELETE FROM [dbo].[Orders] WHERE [id] IN (?)");
+        statement.setString(1, joinKeys(keys));
+        return statement;
+    }
+
+    @Override
+    protected Long getKey(Order entity) {
+        return entity.getId();
+    }
+
+    @Override
+    protected Order readEntity(ResultSet resultSet) throws SQLException {
         return new Order(
-                cursor.getLong("id"),
-                cursor.getInt("volume"),
-                cursor.getDouble("price"),
-                cursor.getLong("account_id"),
-                cursor.getLong("instrument_id")
+                resultSet.getLong("id"),
+                resultSet.getInt("volume"),
+                resultSet.getDouble("price"),
+                resultSet.getLong("account_id"),
+                resultSet.getLong("instrument_id")
         );
     }
 
     @Override
-    public void loadCache(IgniteBiInClosure<Long, Order> clo, @Nullable Object... args) throws CacheLoaderException {
-        try (var connection = dataSource.getConnection(); //
-             var statement = connection.prepareStatement(GET_ALL_USERS_QUERY);
-             var cursor = statement.executeQuery()) {
-
-            long cnt = 0L;
-            while (cursor.next()) {
-                var account = toOrder(cursor);
-                clo.apply(account.getId(), account);
-                cnt++;
-            }
-
-            LOGGER.info("Loaded " + cnt + " orders");
-        } catch (SQLException e) {
-            LOGGER.error(e.getSQLState(), e);
-            throw new CacheLoaderException(e);
-        }
-    }
-
-
-    @Override
-    public Order load(Long aLong) throws CacheLoaderException {
-        try (var connection = dataSource.getConnection()) {
-
-            var statement = connection.prepareStatement(GET_USER_BY_ID);
-            statement.setLong(1, aLong);
-
-            var cursor = statement.executeQuery();
-
-            if (cursor.next()) {
-                var order = toOrder(cursor);
-                LOGGER.debug("Loaded order: " + order.getId());
-                return order;
-            }
-
-        } catch (SQLException e) {
-            LOGGER.error(e.getSQLState(), e);
-            throw new CacheLoaderException(e);
-        }
-        return null;
-    }
-
-    @Override
-    public Map<Long, Order> loadAll(Iterable<? extends Long> iterable) throws CacheLoaderException {
-        System.out.println("UserCacheStoreAdapter.loadAll");
-        return null;
-    }
-
-    @Override
-    public void write(Cache.Entry<? extends Long, ? extends Order> entry) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.write");
-    }
-
-    @Override
-    public void writeAll(Collection<Cache.Entry<? extends Long, ? extends Order>> collection) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.writeAll");
-    }
-
-    @Override
-    public void delete(Object o) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.delete");
-    }
-
-    @Override
-    public void deleteAll(Collection<?> collection) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.deleteAll");
+    protected String getTableName() {
+        return "Orders";
     }
 }

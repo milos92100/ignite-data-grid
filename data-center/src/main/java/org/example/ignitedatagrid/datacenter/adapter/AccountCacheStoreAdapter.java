@@ -1,110 +1,88 @@
 package org.example.ignitedatagrid.datacenter.adapter;
 
 
-import org.apache.ignite.IgniteLogger;
-import org.apache.ignite.cache.store.CacheStoreAdapter;
-import org.apache.ignite.lang.IgniteBiInClosure;
-import org.apache.ignite.resources.LoggerResource;
 import org.example.ignitedatagrid.domain.entities.Account;
-import org.jetbrains.annotations.Nullable;
 
-import javax.cache.Cache;
-import javax.cache.integration.CacheLoaderException;
-import javax.cache.integration.CacheWriterException;
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.Map;
 
-public class AccountCacheStoreAdapter extends CacheStoreAdapter<Long, Account> {
-
-    private static final String GET_ALL_ACCOUNTS_QUERY = "SELECT * FROM [dbo].[Accounts]";
-    private static final String GET_ACCOUNT_BY_ID = "SELECT * FROM [dbo].[Accounts] WHERE [id] = ?";
-
-    @LoggerResource
-    private IgniteLogger LOGGER;
-
-    private final DataSource dataSource;
+public class AccountCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long, Account> {
 
     public AccountCacheStoreAdapter(DataSource dataSource) {
-        this.dataSource = dataSource;
+        super(dataSource);
     }
 
-    private Account toAccount(ResultSet cursor) throws SQLException {
+    @Override
+    protected PreparedStatement insertStatement(Connection connection, Account entity) throws SQLException {
+        var statement = connection.prepareStatement("INSERT INTO [dbo].[Accounts] ([id], [name], [user_id]) VALUES (?, ?, ?)");
+        statement.setLong(1, entity.getId());
+        statement.setString(2, entity.getName());
+        statement.setLong(3, entity.getUserId());
+        return statement;
+    }
+
+    @Override
+    protected PreparedStatement updateStatement(Connection connection, Account entity) throws SQLException {
+        var statement = connection.prepareStatement("UPDATE [dbo].[Accounts] set [name] = ?, [user_id] = ? WHERE [id] = ?");
+        statement.setString(1, entity.getName());
+        statement.setLong(2, entity.getUserId());
+        statement.setLong(3, entity.getId());
+        return statement;
+    }
+
+    @Override
+    protected PreparedStatement getAllStatement(Connection connection) throws SQLException {
+        return connection.prepareStatement("SELECT * FROM [dbo].[Accounts]");
+    }
+
+    @Override
+    protected PreparedStatement getByKeyStatement(Connection connection, Long key) throws SQLException {
+        var statement = connection.prepareStatement("SELECT * FROM [dbo].[Accounts] WHERE [id] = ?");
+        statement.setLong(1, key);
+        return statement;
+    }
+
+    @Override
+    protected PreparedStatement getAllByKeysStatement(Connection connection, Iterable<Long> keys) throws SQLException {
+        var statement = connection.prepareStatement("SELECT * FROM [dbo].[Accounts] WHERE id IN (?)");
+        statement.setString(1, joinKeys(keys));
+        return statement;
+    }
+
+    @Override
+    protected PreparedStatement deleteStatement(Connection connection, Long key) throws SQLException {
+        var statement = connection.prepareStatement("DELETE FROM [dbo].[Accounts] WHERE [id] = ?");
+        statement.setLong(1, key);
+        return statement;
+    }
+
+    @Override
+    protected PreparedStatement deleteAllStatement(Connection connection, Collection<Long> keys) throws SQLException {
+        var statement = connection.prepareStatement("DELETE FROM [dbo].[Accounts] WHERE [id] = IN (?)");
+        statement.setString(1, joinKeys(keys));
+        return statement;
+    }
+
+    @Override
+    protected Long getKey(Account entity) {
+        return entity.getId();
+    }
+
+    @Override
+    protected Account readEntity(ResultSet resultSet) throws SQLException {
         return new Account(
-                cursor.getLong("id"),
-                cursor.getString("name"),
-                cursor.getLong("user_id")
+                resultSet.getLong("id"),
+                resultSet.getString("name"),
+                resultSet.getLong("user_id")
         );
     }
 
     @Override
-    public void loadCache(IgniteBiInClosure<Long, Account> clo, @Nullable Object... args) throws CacheLoaderException {
-        try (var connection = dataSource.getConnection(); //
-             var statement = connection.prepareStatement(GET_ALL_ACCOUNTS_QUERY);
-             var cursor = statement.executeQuery()) {
-
-            long cnt = 0L;
-            while (cursor.next()) {
-                var account = toAccount(cursor);
-                clo.apply(account.getId(), account);
-                cnt++;
-            }
-
-            LOGGER.info("Loaded " + cnt + " accounts");
-        } catch (SQLException e) {
-            LOGGER.error(e.getSQLState(), e);
-            throw new CacheLoaderException(e);
-        }
-    }
-
-
-    @Override
-    public Account load(Long aLong) throws CacheLoaderException {
-        try (var connection = dataSource.getConnection()) {
-
-            var statement = connection.prepareStatement(GET_ACCOUNT_BY_ID);
-            statement.setLong(1, aLong);
-
-            var cursor = statement.executeQuery();
-
-            if (cursor.next()) {
-                var account = toAccount(cursor);
-                LOGGER.debug("Loaded account: " + account.getId());
-                return account;
-            }
-
-        } catch (SQLException e) {
-            LOGGER.error(e.getSQLState(), e);
-            throw new CacheLoaderException(e);
-        }
-        return null;
-    }
-
-    @Override
-    public Map<Long, Account> loadAll(Iterable<? extends Long> iterable) throws CacheLoaderException {
-        System.out.println("UserCacheStoreAdapter.loadAll");
-        return null;
-    }
-
-    @Override
-    public void write(Cache.Entry<? extends Long, ? extends Account> entry) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.write");
-    }
-
-    @Override
-    public void writeAll(Collection<Cache.Entry<? extends Long, ? extends Account>> collection) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.writeAll");
-    }
-
-    @Override
-    public void delete(Object o) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.delete");
-    }
-
-    @Override
-    public void deleteAll(Collection<?> collection) throws CacheWriterException {
-        System.out.println("UserCacheStoreAdapter.deleteAll");
+    protected String getTableName() {
+        return "Accounts";
     }
 }

@@ -25,7 +25,7 @@ public class InstrumentCacheConfig extends CacheConfiguration<Long, Instrument> 
         fields.put("market", String.class.getName());
         queryEntity.setFields(fields);
 
-        var indexes = new ArrayList<QueryIndex>(2);
+        var indexes = new ArrayList<QueryIndex>(3);
         indexes.add(new QueryIndex("id"));
         indexes.add(new QueryIndex("name"));
         indexes.add(new QueryIndex("market"));

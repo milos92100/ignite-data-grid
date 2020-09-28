@@ -5,9 +5,12 @@ import org.apache.ignite.cache.store.CacheStoreAdapter;
 import org.apache.ignite.lang.IgniteBiInClosure;
 import org.apache.ignite.resources.LoggerResource;
 
+import javax.cache.Cache;
 import javax.cache.integration.CacheLoaderException;
 import javax.cache.integration.CacheWriterException;
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
@@ -19,12 +22,6 @@ import java.util.stream.StreamSupport;
 
 public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdapter<K, V> {
 
-    private static final String GET_ALL = "SELECT * FROM %s";
-    private static final String GET_BY_ID = "SELECT * FROM %s WHERE id = ?";
-    private static final String GET_ALL_BY_IDS = "SELECT * FROM %s WHERE id IN(?)";
-    private static final String DELETE = "DELETE FROM %s WHERE id = ?";
-    private static final String DELETE_ALL = "DELETE FROM %s WHERE id = IN(?)";
-
     @LoggerResource
     protected IgniteLogger LOGGER;
 
@@ -34,24 +31,58 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         this.dataSource = dataSource;
     }
 
+    protected void debug(String message) {
+        if (!LOGGER.isDebugEnabled()) {
+            return;
+        }
+        LOGGER.debug(message);
+    }
+
     @Override
     public void loadCache(IgniteBiInClosure<K, V> closure, Object... args) {
-        try (var connection = dataSource.getConnection(); //
-             var statement = connection.prepareStatement(String.format(GET_ALL, getTableName()));
-             var cursor = statement.executeQuery()) {
+        try (var connection = dataSource.getConnection();
+             var statement = getAllStatement(connection)) {
 
-            long cnt = 0L;
-            while (cursor.next()) {
-                var entity = readEntity(cursor);
-                closure.apply(getKey(entity), entity);
-                cnt++;
+            debug("Executing: " + statement);
+
+            try (var resultSet = statement.executeQuery()) {
+                long cnt = 0L;
+                while (resultSet.next()) {
+                    var entity = readEntity(resultSet);
+                    closure.apply(getKey(entity), entity);
+                    cnt++;
+                }
+
+                LOGGER.info("Loaded " + cnt + " from " + getTableName());
             }
-
-            LOGGER.info("Loaded " + cnt + " from " + getTableName());
         } catch (SQLException e) {
             LOGGER.error(e.getSQLState(), e);
             throw new CacheLoaderException(e);
         }
+    }
+
+    private void writeInternal(K id, V entity) {
+        try (var connection = dataSource.getConnection();
+             var statement = insertStatement(connection, entity)) {
+
+            debug("Executing: " + statement);
+
+            statement.executeUpdate();
+
+        } catch (SQLException e) {
+            LOGGER.error(e.getSQLState(), e);
+            throw new CacheWriterException(e);
+        }
+    }
+
+    @Override
+    public void write(Cache.Entry<? extends K, ? extends V> entry) throws CacheWriterException {
+        writeInternal(entry.getKey(), entry.getValue());
+    }
+
+    @Override
+    public void writeAll(Collection<Cache.Entry<? extends K, ? extends V>> collection) throws CacheWriterException {
+        collection.forEach(entry -> writeInternal(entry.getKey(), entry.getValue()));
     }
 
     @Override
@@ -59,9 +90,9 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         if (key == null) return null;
 
         try (var connection = dataSource.getConnection();
-             var statement = connection.prepareStatement(String.format(GET_BY_ID, getTableName()))) {
+             var statement = getByKeyStatement(connection, key)) {
 
-            statement.setObject(1, key);
+            debug("Executing: " + statement);
 
             try (var resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
@@ -85,13 +116,9 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         Map<K, V> result = new HashMap<>();
 
         try (var connection = dataSource.getConnection();
-             var statement = connection.prepareStatement(String.format(GET_ALL_BY_IDS, getTableName()))) {
+             var statement = getAllByKeysStatement(connection, (Iterable<K>) keys)) {
 
-            var ids = StreamSupport.stream(keys.spliterator(), false)
-                    .map(Objects::toString)
-                    .collect(Collectors.joining(","));
-
-            statement.setString(1, ids);
+            debug("Executing: " + statement);
 
             try (var resultSet = statement.executeQuery()) {
                 long cnt = 0L;
@@ -116,9 +143,9 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         if (key == null) return;
 
         try (var connection = dataSource.getConnection();
-             var statement = connection.prepareStatement(String.format(DELETE, getTableName()))) {
+             var statement = deleteStatement(connection, (K) key)) {
 
-            statement.setLong(1, (Long) key);
+            debug("Executing: " + statement);
 
             var affectedRows = statement.executeUpdate();
             if (affectedRows == 0) {
@@ -135,23 +162,76 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         if (collection.isEmpty()) return;
 
         try (var connection = dataSource.getConnection();
-             var statement = connection.prepareStatement(String.format(DELETE_ALL, getTableName()))) {
+             var statement = deleteAllStatement(connection, (Collection<K>) collection)) {
 
-            var ids = collection.stream()
-                    .map(Objects::toString)
-                    .collect(Collectors.joining(","));
-
-            statement.setString(1, ids);
+            debug("Executing: " + statement);
 
             var affectedRows = statement.executeUpdate();
             if (affectedRows == 0) {
                 throw new SQLException("Deleting from:" + getTableName() + " failed, no rows affected.");
             }
+            LOGGER.debug("Deleted " + affectedRows + " rows from " + getTableName());
         } catch (SQLException e) {
             LOGGER.error(e.getSQLState(), e);
             throw new CacheWriterException(e);
         }
     }
+
+    protected <E> String joinKeys(Iterable<K> keys) {
+        return StreamSupport.stream(keys.spliterator(), false)
+                .map(Objects::toString)
+                .collect(Collectors.joining(","));
+    }
+
+    /**
+     * Create an prepared statement for executing an entity insert
+     *
+     * @param connection Connection to data source
+     * @param entity     Entity to insert
+     * @return PreparedStatement Insert statement
+     * @throws SQLException if creation of statement fails
+     */
+    protected abstract PreparedStatement insertStatement(Connection connection, V entity) throws SQLException;
+
+    /**
+     * Creates an prepared statement for executing and entity update
+     *
+     * @param connection Connection to data source
+     * @param entity     Entity to update
+     * @return PreparedStatement Update statement
+     * @throws SQLException if creation of statement fails
+     */
+    protected abstract PreparedStatement updateStatement(Connection connection, V entity) throws SQLException;
+
+    /**
+     *
+     * @param connection
+     * @return
+     * @throws SQLException
+     */
+    protected abstract PreparedStatement getAllStatement(Connection connection) throws SQLException;
+
+    /**
+     *
+     * @param connection
+     * @param entity
+     * @return
+     * @throws SQLException
+     */
+    protected abstract PreparedStatement getByKeyStatement(Connection connection, K entity) throws SQLException;
+
+    /**
+     *
+     * @param connection
+     * @param keys
+     * @return
+     * @throws SQLException
+     */
+    protected abstract PreparedStatement getAllByKeysStatement(Connection connection, Iterable<K> keys) throws SQLException;
+
+    protected abstract PreparedStatement deleteStatement(Connection connection, K key) throws SQLException;
+
+    protected abstract PreparedStatement deleteAllStatement(Connection connection, Collection<K> keys) throws SQLException;
 
     protected abstract K getKey(V entity);
 

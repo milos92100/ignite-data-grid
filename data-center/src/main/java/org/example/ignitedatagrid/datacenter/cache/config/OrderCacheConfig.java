@@ -2,40 +2,40 @@ package org.example.ignitedatagrid.datacenter.cache.config;
 
 import org.apache.ignite.cache.QueryEntity;
 import org.apache.ignite.cache.QueryIndex;
-import org.apache.ignite.cache.QueryIndexType;
 import org.apache.ignite.configuration.CacheConfiguration;
-import org.example.ignitedatagrid.datacenter.factory.UserAdapterFactory;
-import org.example.ignitedatagrid.domain.entities.User;
+import org.example.ignitedatagrid.datacenter.factory.InstrumentAdapterFactory;
+import org.example.ignitedatagrid.domain.entities.Instrument;
 
 import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 
-public class UserCacheConfig extends CacheConfiguration<Long, User> {
-    public static final String NAME = "UserCache";
+public class OrderCacheConfig extends CacheConfiguration<Long, Instrument> {
+    public static final String NAME = "OrderCache";
 
-    public static UserCacheConfig create(DataSource dataSource) {
-        var config = new UserCacheConfig();
+    public static OrderCacheConfig create(DataSource dataSource) {
+        var config = new OrderCacheConfig();
         var queryEntity = new QueryEntity();
         queryEntity.setKeyFieldName("id");
 
         var fields = new LinkedHashMap<String, String>();
         fields.put("id", Long.class.getName());
-        fields.put("firstName", String.class.getName());
-        fields.put("lastName", String.class.getName());
+        fields.put("volume", Integer.class.getName());
+        fields.put("price", Double.class.getName());
+        fields.put("account_id", Long.class.getName());
+        fields.put("instrument_id", Long.class.getName());
         queryEntity.setFields(fields);
 
         var indexes = new ArrayList<QueryIndex>(3);
         indexes.add(new QueryIndex("id"));
-        indexes.add(new QueryIndex("firstName"));
-        indexes.add(new QueryIndex(List.of("firstName", "lastName"), QueryIndexType.SORTED));
+        indexes.add(new QueryIndex("account_id"));
+        indexes.add(new QueryIndex("instrument_id"));
         queryEntity.setIndexes(indexes);
 
         config.setName(NAME);
         config.setQueryEntities(Collections.singletonList(queryEntity));
-        config.setCacheStoreFactory(new UserAdapterFactory(dataSource));
+        config.setCacheStoreFactory(new InstrumentAdapterFactory(dataSource));
 
         return config;
     }

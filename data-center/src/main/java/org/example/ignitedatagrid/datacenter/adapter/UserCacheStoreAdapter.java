@@ -3,49 +3,70 @@ package org.example.ignitedatagrid.datacenter.adapter;
 
 import org.example.ignitedatagrid.domain.entities.User;
 
-import javax.cache.Cache;
-import javax.cache.integration.CacheWriterException;
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
 
 public class UserCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long, User> {
 
-    private static final String TABLE_NAME = "Users";
-    private static final String INSERT_QUERY = "INSERT INTO Users (id, first_name, last_name) VALUES (?, ?, ?)";
-
     public UserCacheStoreAdapter(DataSource dataSource) {
         super(dataSource);
     }
 
-    private void writeInternal(Long id, User user) {
-        try (var connection = dataSource.getConnection();
-             var statement = connection.prepareStatement(INSERT_QUERY)) {
-
-            statement.setLong(1, id);
-            statement.setString(2, user.getFirstName());
-            statement.setString(3, user.getLastName());
-
-            var affectedRows = statement.executeUpdate();
-            if (affectedRows == 0) {
-                throw new SQLException("Inserting user failed, no rows affected.");
-            }
-        } catch (SQLException e) {
-            LOGGER.error(e.getSQLState(), e);
-            throw new CacheWriterException(e);
-        }
+    @Override
+    protected PreparedStatement insertStatement(Connection connection, User entity) throws SQLException {
+        var statement = connection.prepareStatement("INSERT INTO [dbo].[Users] ([id], [first_name], [last_name]) VALUES (?, ?, ?)");
+        statement.setLong(1, entity.getId());
+        statement.setString(2, entity.getFirstName());
+        statement.setString(3, entity.getLastName());
+        return statement;
     }
 
     @Override
-    public void write(Cache.Entry<? extends Long, ? extends User> entry) throws CacheWriterException {
-        writeInternal(entry.getKey(), entry.getValue());
+    protected PreparedStatement updateStatement(Connection connection, User entity) throws SQLException {
+        var statement = connection.prepareStatement("UPDATE [dbo].[Users] set [first_name] = ?, [last_name] = ? WHERE [id] = ?");
+        statement.setString(1, entity.getFirstName());
+        statement.setString(2, entity.getLastName());
+        statement.setLong(3, entity.getId());
+        return statement;
     }
 
     @Override
-    public void writeAll(Collection<Cache.Entry<? extends Long, ? extends User>> collection) throws CacheWriterException {
-        collection.forEach(entry -> writeInternal(entry.getKey(), entry.getValue()));
+    protected PreparedStatement getAllStatement(Connection connection) throws SQLException {
+        return connection.prepareStatement("SELECT * FROM [dbo].[Users]");
     }
+
+    @Override
+    protected PreparedStatement getByKeyStatement(Connection connection, Long key) throws SQLException {
+        var statement = connection.prepareStatement("SELECT * FROM [dbo].[Users] WHERE id = ?");
+        statement.setLong(1, key);
+        return statement;
+    }
+
+    @Override
+    protected PreparedStatement getAllByKeysStatement(Connection connection, Iterable<Long> keys) throws SQLException {
+        var statement = connection.prepareStatement("SELECT * FROM [dbo].[Users] WHERE id IN (?)");
+        statement.setString(1, joinKeys(keys));
+        return statement;
+    }
+
+    @Override
+    protected PreparedStatement deleteStatement(Connection connection, Long key) throws SQLException {
+        var statement = connection.prepareStatement("DELETE FROM [dbo].[Users] WHERE [id] = ?");
+        statement.setLong(1, key);
+        return statement;
+    }
+
+    @Override
+    protected PreparedStatement deleteAllStatement(Connection connection, Collection<Long> keys) throws SQLException {
+        var statement = connection.prepareStatement("DELETE FROM [dbo].[Users] WHERE [id] IN (?)");
+        statement.setString(1, joinKeys(keys));
+        return statement;
+    }
+
 
     @Override
     protected Long getKey(User entity) {
@@ -63,6 +84,6 @@ public class UserCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long, U
 
     @Override
     protected String getTableName() {
-        return TABLE_NAME;
+        return "[dbo].[Users]";
     }
 }

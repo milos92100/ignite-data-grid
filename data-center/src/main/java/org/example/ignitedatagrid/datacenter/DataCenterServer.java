@@ -7,9 +7,12 @@ import org.apache.ignite.IgniteException;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.lifecycle.LifecycleBean;
 import org.apache.ignite.lifecycle.LifecycleEventType;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.multicast.TcpDiscoveryMulticastIpFinder;
 import org.example.ignitedatagrid.datacenter.cache.config.UserCacheConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
 
 public class DataCenterServer implements LifecycleBean {
 
@@ -18,11 +21,16 @@ public class DataCenterServer implements LifecycleBean {
     private static final Logger LOGGER = LoggerFactory.getLogger(DataCenterServer.class);
 
     public void start() {
-        HikariConfig hikariConfig = new HikariConfig("db.properties");
-        HikariDataSource dataSource = new HikariDataSource(hikariConfig);
+        var dataSource = new HikariDataSource(
+                new HikariConfig("db.properties")
+        );
+
+        var ipFinder = new TcpDiscoveryMulticastIpFinder();
+        ipFinder.setAddresses(Collections.singletonList("127.0.0.1:47500..47509"));
 
         var nodeName = System.getProperty("nodeName", "date-center");
-        var config = IgniteConfigurationFactory.forServer(nodeName, dataSource);
+
+        var config = IgniteConfigurationFactory.forServer(nodeName, dataSource, ipFinder);
         config.setLifecycleBeans(this);
         config.setGridLogger(new IgniteLoggerImpl(LOGGER));
 
