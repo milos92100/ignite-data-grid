@@ -1,9 +1,10 @@
 package org.example.ignitedatagrid.datacenter.adapter;
 
 
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.resources.LoggerResource;
 import org.example.ignitedatagrid.domain.entities.Account;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -11,6 +12,9 @@ import java.sql.SQLException;
 import java.util.Collection;
 
 public class AccountCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long, Account> {
+
+    @LoggerResource(categoryClass = AccountCacheStoreAdapter.class, categoryName = "AccountCacheStoreAdapter")
+    protected IgniteLogger LOGGER;
 
     @Override
     protected PreparedStatement insertStatement(Connection connection, Account entity) throws SQLException {
@@ -58,7 +62,7 @@ public class AccountCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long
 
     @Override
     protected PreparedStatement deleteAllStatement(Connection connection, Collection<Long> keys) throws SQLException {
-        var statement = connection.prepareStatement("DELETE FROM [dbo].[Accounts] WHERE [id] = IN (?)");
+        var statement = connection.prepareStatement("DELETE FROM [dbo].[Accounts] WHERE [id] IN (?)");
         statement.setString(1, joinKeys(keys));
         return statement;
     }
@@ -78,7 +82,7 @@ public class AccountCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long
     }
 
     @Override
-    protected String getTableName() {
-        return "Accounts";
+    protected IgniteLogger getLogger() {
+        return LOGGER;
     }
 }

@@ -1,6 +1,8 @@
 package org.example.ignitedatagrid.datacenter.adapter;
 
 
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.resources.LoggerResource;
 import org.example.ignitedatagrid.domain.entities.Order;
 
 import java.sql.Connection;
@@ -10,6 +12,10 @@ import java.sql.SQLException;
 import java.util.Collection;
 
 public class OrderCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long, Order> {
+
+    @LoggerResource(categoryClass = OrderCacheStoreAdapter.class, categoryName = "OrderCacheStoreAdapter")
+    protected IgniteLogger LOGGER;
+
 
     @Override
     protected PreparedStatement insertStatement(Connection connection, Order entity) throws SQLException {
@@ -91,7 +97,7 @@ public class OrderCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long, 
     }
 
     @Override
-    protected String getTableName() {
-        return "Orders";
+    protected IgniteLogger getLogger() {
+        return LOGGER;
     }
 }

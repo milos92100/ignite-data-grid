@@ -3,12 +3,16 @@ package org.example.ignitedatagrid.datacenter;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.internal.IgnitionEx;
 import org.apache.ignite.internal.processors.resource.GridSpringResourceContextImpl;
 import org.apache.ignite.lifecycle.LifecycleBean;
 import org.apache.ignite.lifecycle.LifecycleEventType;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.multicast.TcpDiscoveryMulticastIpFinder;
+import org.example.ignitedatagrid.datacenter.cache.config.AccountCacheConfig;
+import org.example.ignitedatagrid.datacenter.cache.config.InstrumentCacheConfig;
+import org.example.ignitedatagrid.datacenter.cache.config.OrderCacheConfig;
 import org.example.ignitedatagrid.datacenter.cache.config.UserCacheConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +39,7 @@ public class DataCenterServer implements LifecycleBean {
 
             var config = IgniteConfigurationFactory.forServer(nodeName, ipFinder);
             config.setLifecycleBeans(this);
-            config.setGridLogger(new IgniteLoggerImpl(LOGGER));
+            config.setGridLogger(new IgniteLoggerImpl(LoggerFactory.getLogger(nodeName)));
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 System.err.println("Closing DB connection on shutdown...");
@@ -58,21 +62,26 @@ public class DataCenterServer implements LifecycleBean {
 
             ignite = IgnitionEx.start(config, springCtx);
 
+            loadCaches();
+
         } catch (Exception e) {
             LOGGER.error(e.getMessage(), e);
             throw new RuntimeException(e);
         }
-
-        loadCaches();
-
     }
 
     private void loadCaches() {
-        ignite.getOrCreateCache(UserCacheConfig.NAME).loadCache(null);
-        //  ignite.getOrCreateCache(AccountCacheConfig.NAME).loadCache(null);
-        //   ignite.getOrCreateCache(InstrumentCacheConfig.NAME).loadCache(null);
-        //   ignite.getOrCreateCache(OrderCacheConfig.NAME).loadCache(null);
+        loadCacheWithMetrics(ignite.getOrCreateCache(UserCacheConfig.NAME));
+        loadCacheWithMetrics(ignite.getOrCreateCache(AccountCacheConfig.NAME));
+        loadCacheWithMetrics(ignite.getOrCreateCache(InstrumentCacheConfig.NAME));
+        loadCacheWithMetrics(ignite.getOrCreateCache(OrderCacheConfig.NAME));
+    }
 
+    private void loadCacheWithMetrics(IgniteCache<?, ?> cache) {
+        long now = System.currentTimeMillis();
+        LOGGER.info("Started loading cache {}", cache.getName());
+        cache.loadCache(null);
+        LOGGER.info("{} cache loaded after: {} ms", cache.getName(), System.currentTimeMillis() - now);
     }
 
     @Override

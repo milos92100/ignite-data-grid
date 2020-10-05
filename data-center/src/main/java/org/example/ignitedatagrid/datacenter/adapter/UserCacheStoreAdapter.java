@@ -1,6 +1,8 @@
 package org.example.ignitedatagrid.datacenter.adapter;
 
 
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.resources.LoggerResource;
 import org.example.ignitedatagrid.domain.entities.User;
 
 import java.sql.Connection;
@@ -10,6 +12,9 @@ import java.sql.SQLException;
 import java.util.Collection;
 
 public class UserCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long, User> {
+
+    @LoggerResource(categoryClass = UserCacheStoreAdapter.class, categoryName = "UserCacheStoreAdapter")
+    protected IgniteLogger LOGGER;
 
     @Override
     protected PreparedStatement insertStatement(Connection connection, User entity) throws SQLException {
@@ -72,13 +77,13 @@ public class UserCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long, U
     protected User readEntity(ResultSet resultSet) throws SQLException {
         return new User(
                 resultSet.getLong("id"),
-                resultSet.getString("firstName"),
-                resultSet.getString("lastName")
+                resultSet.getString("first_name"),
+                resultSet.getString("last_name")
         );
     }
 
     @Override
-    protected String getTableName() {
-        return "[dbo].[Users]";
+    protected IgniteLogger getLogger() {
+        return LOGGER;
     }
 }

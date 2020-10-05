@@ -16,6 +16,8 @@ public class IgniteLoggerImpl implements IgniteLogger {
     public IgniteLoggerImpl(Object ctgr) {
         if (ctgr instanceof String) {
             internalLogger = LoggerFactory.getLogger((String) ctgr);
+        } else if (ctgr instanceof Class<?>) {
+            internalLogger = LoggerFactory.getLogger(((Class<?>) ctgr).getName());
         } else {
             internalLogger = LoggerFactory.getLogger(ctgr.getClass());
         }

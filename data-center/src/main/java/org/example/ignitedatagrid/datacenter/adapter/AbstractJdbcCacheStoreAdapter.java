@@ -3,7 +3,6 @@ package org.example.ignitedatagrid.datacenter.adapter;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cache.store.CacheStoreAdapter;
 import org.apache.ignite.lang.IgniteBiInClosure;
-import org.apache.ignite.resources.LoggerResource;
 import org.apache.ignite.resources.SpringResource;
 
 import javax.cache.Cache;
@@ -23,9 +22,6 @@ import java.util.stream.StreamSupport;
 
 public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdapter<K, V> {
 
-    @LoggerResource
-    protected IgniteLogger LOGGER;
-
     @SpringResource(resourceName = "dataSource")
     protected DataSource dataSource;
 
@@ -34,7 +30,7 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         try (var connection = dataSource.getConnection();
              var statement = getAllStatement(connection)) {
 
-            LOGGER.debug("Executing: " + statement);
+            getLogger().info("Executing: " + statement);
 
             try (var resultSet = statement.executeQuery()) {
                 long cnt = 0L;
@@ -44,10 +40,10 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
                     cnt++;
                 }
 
-                LOGGER.info("Loaded " + cnt + " from " + getTableName());
+                getLogger().info("Loaded " + cnt + "  into cache.");
             }
         } catch (SQLException e) {
-            LOGGER.error(e.getSQLState(), e);
+            getLogger().error(e.getSQLState(), e);
             throw new CacheLoaderException(e);
         }
     }
@@ -56,12 +52,12 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         try (var connection = dataSource.getConnection();
              var statement = insertStatement(connection, entity)) {
 
-            LOGGER.debug("Executing: " + statement);
+            getLogger().debug("Write: " + entity);
 
             statement.executeUpdate();
 
         } catch (SQLException e) {
-            LOGGER.error(e.getSQLState(), e);
+            getLogger().error(e.getSQLState(), e);
             throw new CacheWriterException(e);
         }
     }
@@ -73,6 +69,7 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
 
     @Override
     public void writeAll(Collection<Cache.Entry<? extends K, ? extends V>> collection) throws CacheWriterException {
+        getLogger().info("writeAll " + collection.size());
         collection.forEach(entry -> writeInternal(entry.getKey(), entry.getValue()));
     }
 
@@ -83,17 +80,17 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         try (var connection = dataSource.getConnection();
              var statement = getByKeyStatement(connection, key)) {
 
-            LOGGER.debug("Executing: " + statement);
+            getLogger().info("Executing: " + statement);
 
             try (var resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
                     V entity = readEntity(resultSet);
-                    LOGGER.debug("Loaded : " + getKey(entity));
+                    getLogger().info("Loaded : " + getKey(entity));
                     return entity;
                 }
             }
         } catch (SQLException e) {
-            LOGGER.error(e.getSQLState(), e);
+            getLogger().error(e.getSQLState(), e);
             throw new CacheLoaderException(e);
         }
         return null;
@@ -109,7 +106,7 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         try (var connection = dataSource.getConnection();
              var statement = getAllByKeysStatement(connection, (Iterable<K>) keys)) {
 
-            LOGGER.debug("Executing: " + statement);
+            getLogger().info("Executing: " + statement);
 
             try (var resultSet = statement.executeQuery()) {
                 long cnt = 0L;
@@ -119,10 +116,10 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
                     cnt++;
                 }
 
-                LOGGER.info("Loaded " + cnt + " from " + getTableName());
+                getLogger().info("Loaded " + cnt + " records.");
             }
         } catch (SQLException e) {
-            LOGGER.error(e.getSQLState(), e);
+            getLogger().error(e.getSQLState(), e);
             throw new CacheLoaderException(e);
         }
 
@@ -136,14 +133,14 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         try (var connection = dataSource.getConnection();
              var statement = deleteStatement(connection, (K) key)) {
 
-            LOGGER.debug("Executing: " + statement);
+            getLogger().info("Executing: " + statement);
 
             var affectedRows = statement.executeUpdate();
             if (affectedRows == 0) {
-                throw new SQLException("Deleting key: " + key + " from: " + getTableName() + " failed, no rows affected.");
+                throw new SQLException("Deleting key: " + key + " failed, no rows affected.");
             }
         } catch (SQLException e) {
-            LOGGER.error(e.getSQLState(), e);
+            getLogger().error(e.getSQLState(), e);
             throw new CacheWriterException(e);
         }
     }
@@ -155,15 +152,16 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         try (var connection = dataSource.getConnection();
              var statement = deleteAllStatement(connection, (Collection<K>) collection)) {
 
-            LOGGER.debug("Executing: " + statement);
+            getLogger().info("Executing: " + statement);
 
             var affectedRows = statement.executeUpdate();
             if (affectedRows == 0) {
-                throw new SQLException("Deleting from:" + getTableName() + " failed, no rows affected.");
+                throw new SQLException("Deleting failed, no rows affected.");
             }
-            LOGGER.debug("Deleted " + affectedRows + " rows from " + getTableName());
+
+            getLogger().info("Deleted " + affectedRows + " rows");
         } catch (SQLException e) {
-            LOGGER.error(e.getSQLState(), e);
+            getLogger().error(e.getSQLState(), e);
             throw new CacheWriterException(e);
         }
     }
@@ -225,6 +223,6 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
 
     protected abstract V readEntity(ResultSet resultSet) throws SQLException;
 
-    protected abstract String getTableName();
+    protected abstract IgniteLogger getLogger();
 
 }

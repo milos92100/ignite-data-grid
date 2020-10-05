@@ -3,20 +3,21 @@ package org.example.ignitedatagrid.datacenter.cache.config;
 import org.apache.ignite.cache.QueryEntity;
 import org.apache.ignite.cache.QueryIndex;
 import org.apache.ignite.configuration.CacheConfiguration;
-import org.example.ignitedatagrid.datacenter.factory.InstrumentAdapterFactory;
-import org.example.ignitedatagrid.domain.entities.Instrument;
+import org.example.ignitedatagrid.datacenter.factory.AccountAdapterFactory;
+import org.example.ignitedatagrid.domain.entities.Account;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 
-public class AccountCacheConfig extends CacheConfiguration<Long, Instrument> {
+public class AccountCacheConfig extends CacheConfiguration<Long, Account> {
     public static final String NAME = "AccountCache";
 
     public static AccountCacheConfig create() {
         var config = new AccountCacheConfig();
         var queryEntity = new QueryEntity();
         queryEntity.setKeyFieldName("id");
+        queryEntity.setValueType(Account.class.getName());
 
         var fields = new LinkedHashMap<String, String>();
         fields.put("id", Long.class.getName());
@@ -32,7 +33,7 @@ public class AccountCacheConfig extends CacheConfiguration<Long, Instrument> {
 
         config.setName(NAME);
         config.setQueryEntities(Collections.singletonList(queryEntity));
-        config.setCacheStoreFactory(new InstrumentAdapterFactory());
+        config.setCacheStoreFactory(new AccountAdapterFactory());
 
         return config;
     }

@@ -17,6 +17,7 @@ public class InstrumentCacheConfig extends CacheConfiguration<Long, Instrument> 
         var config = new InstrumentCacheConfig();
         var queryEntity = new QueryEntity();
         queryEntity.setKeyFieldName("id");
+        queryEntity.setValueType(Instrument.class.getName());
 
         var fields = new LinkedHashMap<String, String>();
         fields.put("id", Long.class.getName());

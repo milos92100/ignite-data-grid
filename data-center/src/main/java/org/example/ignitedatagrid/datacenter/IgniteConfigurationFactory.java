@@ -6,6 +6,9 @@ import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.example.ignitedatagrid.datacenter.cache.config.AccountCacheConfig;
+import org.example.ignitedatagrid.datacenter.cache.config.InstrumentCacheConfig;
+import org.example.ignitedatagrid.datacenter.cache.config.OrderCacheConfig;
 import org.example.ignitedatagrid.datacenter.cache.config.UserCacheConfig;
 
 import javax.cache.expiry.Duration;
@@ -29,13 +32,13 @@ public class IgniteConfigurationFactory {
     public static IgniteConfiguration forServer(String name, TcpDiscoveryVmIpFinder ipFinder) {
         IgniteConfiguration cfg = new IgniteConfiguration();
         cfg.setIgniteInstanceName(name);
-        cfg.setPeerClassLoadingEnabled(false);
+        cfg.setPeerClassLoadingEnabled(true);
         cfg.setDiscoverySpi(new TcpDiscoverySpi().setIpFinder(ipFinder));
         cfg.setCacheConfiguration( //
-                applyCommonConfiguration(UserCacheConfig.create())
-                //  applyCommonConfiguration(AccountCacheConfig.create()),
-                //   applyCommonConfiguration(InstrumentCacheConfig.create()),
-                //    applyCommonConfiguration(OrderCacheConfig.create())
+                applyCommonConfiguration(UserCacheConfig.create()),
+                applyCommonConfiguration(AccountCacheConfig.create()),
+                applyCommonConfiguration(InstrumentCacheConfig.create()),
+                applyCommonConfiguration(OrderCacheConfig.create())
         );
 
         return cfg;
