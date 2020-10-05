@@ -2,16 +2,12 @@ package org.example.ignitedatagrid.datacenter.factory;
 
 import org.example.ignitedatagrid.datacenter.adapter.OrderCacheStoreAdapter;
 
-import javax.sql.DataSource;
+import javax.cache.configuration.Factory;
 
-public class OrderAdapterFactory extends AbstractAdapterFactory<OrderCacheStoreAdapter> {
-
-    public OrderAdapterFactory(DataSource dataSource) {
-        super(dataSource);
-    }
+public class OrderAdapterFactory implements Factory<OrderCacheStoreAdapter> {
 
     @Override
     public OrderCacheStoreAdapter create() {
-        return new OrderCacheStoreAdapter(dataSource);
+        return new OrderCacheStoreAdapter();
     }
 }

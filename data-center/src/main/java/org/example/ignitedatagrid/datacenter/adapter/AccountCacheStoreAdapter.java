@@ -12,10 +12,6 @@ import java.util.Collection;
 
 public class AccountCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long, Account> {
 
-    public AccountCacheStoreAdapter(DataSource dataSource) {
-        super(dataSource);
-    }
-
     @Override
     protected PreparedStatement insertStatement(Connection connection, Account entity) throws SQLException {
         var statement = connection.prepareStatement("INSERT INTO [dbo].[Accounts] ([id], [name], [user_id]) VALUES (?, ?, ?)");

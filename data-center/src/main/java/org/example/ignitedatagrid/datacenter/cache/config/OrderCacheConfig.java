@@ -6,7 +6,6 @@ import org.apache.ignite.configuration.CacheConfiguration;
 import org.example.ignitedatagrid.datacenter.factory.InstrumentAdapterFactory;
 import org.example.ignitedatagrid.domain.entities.Instrument;
 
-import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -14,7 +13,7 @@ import java.util.LinkedHashMap;
 public class OrderCacheConfig extends CacheConfiguration<Long, Instrument> {
     public static final String NAME = "OrderCache";
 
-    public static OrderCacheConfig create(DataSource dataSource) {
+    public static OrderCacheConfig create() {
         var config = new OrderCacheConfig();
         var queryEntity = new QueryEntity();
         queryEntity.setKeyFieldName("id");
@@ -35,7 +34,7 @@ public class OrderCacheConfig extends CacheConfiguration<Long, Instrument> {
 
         config.setName(NAME);
         config.setQueryEntities(Collections.singletonList(queryEntity));
-        config.setCacheStoreFactory(new InstrumentAdapterFactory(dataSource));
+        config.setCacheStoreFactory(new InstrumentAdapterFactory());
 
         return config;
     }

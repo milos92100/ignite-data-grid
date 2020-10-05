@@ -4,6 +4,7 @@ import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cache.store.CacheStoreAdapter;
 import org.apache.ignite.lang.IgniteBiInClosure;
 import org.apache.ignite.resources.LoggerResource;
+import org.apache.ignite.resources.SpringResource;
 
 import javax.cache.Cache;
 import javax.cache.integration.CacheLoaderException;
@@ -25,25 +26,15 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
     @LoggerResource
     protected IgniteLogger LOGGER;
 
-    protected final DataSource dataSource;
-
-    protected AbstractJdbcCacheStoreAdapter(DataSource dataSource) {
-        this.dataSource = dataSource;
-    }
-
-    protected void debug(String message) {
-        if (!LOGGER.isDebugEnabled()) {
-            return;
-        }
-        LOGGER.debug(message);
-    }
+    @SpringResource(resourceName = "dataSource")
+    protected DataSource dataSource;
 
     @Override
     public void loadCache(IgniteBiInClosure<K, V> closure, Object... args) {
         try (var connection = dataSource.getConnection();
              var statement = getAllStatement(connection)) {
 
-            debug("Executing: " + statement);
+            LOGGER.debug("Executing: " + statement);
 
             try (var resultSet = statement.executeQuery()) {
                 long cnt = 0L;
@@ -65,7 +56,7 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         try (var connection = dataSource.getConnection();
              var statement = insertStatement(connection, entity)) {
 
-            debug("Executing: " + statement);
+            LOGGER.debug("Executing: " + statement);
 
             statement.executeUpdate();
 
@@ -92,7 +83,7 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         try (var connection = dataSource.getConnection();
              var statement = getByKeyStatement(connection, key)) {
 
-            debug("Executing: " + statement);
+            LOGGER.debug("Executing: " + statement);
 
             try (var resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
@@ -118,7 +109,7 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         try (var connection = dataSource.getConnection();
              var statement = getAllByKeysStatement(connection, (Iterable<K>) keys)) {
 
-            debug("Executing: " + statement);
+            LOGGER.debug("Executing: " + statement);
 
             try (var resultSet = statement.executeQuery()) {
                 long cnt = 0L;
@@ -145,7 +136,7 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         try (var connection = dataSource.getConnection();
              var statement = deleteStatement(connection, (K) key)) {
 
-            debug("Executing: " + statement);
+            LOGGER.debug("Executing: " + statement);
 
             var affectedRows = statement.executeUpdate();
             if (affectedRows == 0) {
@@ -164,7 +155,7 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
         try (var connection = dataSource.getConnection();
              var statement = deleteAllStatement(connection, (Collection<K>) collection)) {
 
-            debug("Executing: " + statement);
+            LOGGER.debug("Executing: " + statement);
 
             var affectedRows = statement.executeUpdate();
             if (affectedRows == 0) {
@@ -204,7 +195,6 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
     protected abstract PreparedStatement updateStatement(Connection connection, V entity) throws SQLException;
 
     /**
-     *
      * @param connection
      * @return
      * @throws SQLException
@@ -212,7 +202,6 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
     protected abstract PreparedStatement getAllStatement(Connection connection) throws SQLException;
 
     /**
-     *
      * @param connection
      * @param entity
      * @return
@@ -221,7 +210,6 @@ public abstract class AbstractJdbcCacheStoreAdapter<K, V> extends CacheStoreAdap
     protected abstract PreparedStatement getByKeyStatement(Connection connection, K entity) throws SQLException;
 
     /**
-     *
      * @param connection
      * @param keys
      * @return

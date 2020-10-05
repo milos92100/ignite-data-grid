@@ -3,7 +3,6 @@ package org.example.ignitedatagrid.datacenter.adapter;
 
 import org.example.ignitedatagrid.domain.entities.Instrument;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -11,10 +10,6 @@ import java.sql.SQLException;
 import java.util.Collection;
 
 public class InstrumentCacheStoreAdapter extends AbstractJdbcCacheStoreAdapter<Long, Instrument> {
-
-    public InstrumentCacheStoreAdapter(DataSource dataSource) {
-        super(dataSource);
-    }
 
     @Override
     protected PreparedStatement insertStatement(Connection connection, Instrument entity) throws SQLException {

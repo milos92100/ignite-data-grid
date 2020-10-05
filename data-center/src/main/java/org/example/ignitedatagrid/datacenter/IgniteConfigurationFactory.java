@@ -6,14 +6,10 @@ import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
-import org.example.ignitedatagrid.datacenter.cache.config.AccountCacheConfig;
-import org.example.ignitedatagrid.datacenter.cache.config.InstrumentCacheConfig;
-import org.example.ignitedatagrid.datacenter.cache.config.OrderCacheConfig;
 import org.example.ignitedatagrid.datacenter.cache.config.UserCacheConfig;
 
 import javax.cache.expiry.Duration;
 import javax.cache.expiry.TouchedExpiryPolicy;
-import javax.sql.DataSource;
 
 public class IgniteConfigurationFactory {
 
@@ -30,16 +26,16 @@ public class IgniteConfigurationFactory {
         return config;
     }
 
-    public static IgniteConfiguration forServer(String name, DataSource dataSource, TcpDiscoveryVmIpFinder ipFinder) {
+    public static IgniteConfiguration forServer(String name, TcpDiscoveryVmIpFinder ipFinder) {
         IgniteConfiguration cfg = new IgniteConfiguration();
         cfg.setIgniteInstanceName(name);
-        cfg.setPeerClassLoadingEnabled(true);
+        cfg.setPeerClassLoadingEnabled(false);
         cfg.setDiscoverySpi(new TcpDiscoverySpi().setIpFinder(ipFinder));
         cfg.setCacheConfiguration( //
-                applyCommonConfiguration(UserCacheConfig.create(dataSource)),
-                applyCommonConfiguration(AccountCacheConfig.create(dataSource)),
-                applyCommonConfiguration(InstrumentCacheConfig.create(dataSource)),
-                applyCommonConfiguration(OrderCacheConfig.create(dataSource))
+                applyCommonConfiguration(UserCacheConfig.create())
+                //  applyCommonConfiguration(AccountCacheConfig.create()),
+                //   applyCommonConfiguration(InstrumentCacheConfig.create()),
+                //    applyCommonConfiguration(OrderCacheConfig.create())
         );
 
         return cfg;

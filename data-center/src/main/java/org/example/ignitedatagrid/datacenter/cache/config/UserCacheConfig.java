@@ -7,7 +7,6 @@ import org.apache.ignite.configuration.CacheConfiguration;
 import org.example.ignitedatagrid.datacenter.factory.UserAdapterFactory;
 import org.example.ignitedatagrid.domain.entities.User;
 
-import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -16,10 +15,11 @@ import java.util.List;
 public class UserCacheConfig extends CacheConfiguration<Long, User> {
     public static final String NAME = "UserCache";
 
-    public static UserCacheConfig create(DataSource dataSource) {
+    public static UserCacheConfig create() {
         var config = new UserCacheConfig();
         var queryEntity = new QueryEntity();
         queryEntity.setKeyFieldName("id");
+        queryEntity.setValueType(User.class.getName());
 
         var fields = new LinkedHashMap<String, String>();
         fields.put("id", Long.class.getName());
@@ -35,7 +35,7 @@ public class UserCacheConfig extends CacheConfiguration<Long, User> {
 
         config.setName(NAME);
         config.setQueryEntities(Collections.singletonList(queryEntity));
-        config.setCacheStoreFactory(new UserAdapterFactory(dataSource));
+        config.setCacheStoreFactory(new UserAdapterFactory());
 
         return config;
     }
